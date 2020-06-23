@@ -1,9 +1,12 @@
 import json
 import plotly
 import pandas as pd
+import numpy as np
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+import nltk
+from nltk import pos_tag, word_tokenize
 
 from flask import Flask
 from flask import render_template, request, jsonify
@@ -11,8 +14,20 @@ from plotly.graph_objs import Bar
 from sklearn.externals import joblib
 from sqlalchemy import create_engine
 
+from sklearn.base import BaseEstimator, TransformerMixin
+
 
 app = Flask(__name__)
+
+class TextLengthExtractor(BaseEstimator, TransformerMixin):
+    
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        length_checker = np.vectorize(len)
+        X_len = length_checker(X)
+        return pd.DataFrame(X_len)
 
 def tokenize(text):
     tokens = word_tokenize(text)
@@ -26,11 +41,11 @@ def tokenize(text):
     return clean_tokens
 
 # load data
-engine = create_engine('sqlite:///../data/YourDatabaseName.db')
-df = pd.read_sql_table('YourTableName', engine)
+engine = create_engine('sqlite:///../data/DisasterResponse.db')
+df = pd.read_sql_table('disaster_responses', engine)
 
 # load model
-model = joblib.load("../models/your_model_name.pkl")
+model = joblib.load("../models/classifier.pkl")
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -42,6 +57,13 @@ def index():
     # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
+     
+    category_counts = df.iloc[:,4:].sum()
+    category_names = list(df.iloc[:,4:].columns.values)
+    
+    df2 = df.copy()
+    df2['message_length'] = df2['message'].apply(len)
+    genre_message_length = df2.groupby('genre').mean()['message_length']
     
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
@@ -63,6 +85,48 @@ def index():
                     'title': "Genre"
                 }
             }
+        },
+        
+        # Graph 2: Message lenght by category
+        
+        {
+            'data': [
+                Bar(
+                    x=genre_names,
+                    y=genre_message_length
+                )
+            ],
+            
+            'layout': {
+                'title' : 'Mean Message Length by Genre',
+                'yaxis': {
+                    'title': "Mean Message Length"
+                },
+                'xaxis': {
+                    'title': "Genre"
+                }
+            }           
+        },
+        
+        # Graph 3: Distribution of Categories
+        
+        {
+            'data': [
+                Bar(
+                    x=category_names,
+                    y=category_counts
+                )
+            ],
+            
+            'layout': {
+                'title' : 'Distributions of Categories',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Categories"
+                }
+            }           
         }
     ]
     
