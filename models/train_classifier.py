@@ -137,19 +137,30 @@ def build_model():
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    '''Evaluates the model
-    
-    Args
-        model: pipeline output
-        X_test: Predictors (Tfidf messages matrix)
-        Y_test: Response variables (36 classes)
-        category_names: names of the 36 categories
-        
-    Returns
-        Printed Classification Report for every class prediction
-        
-        https://scikit-learn.org/stable/modules/model_evaluation.html#classification-report
-        
+    '''Returns Classification Scores between 1 and 0.
+       The score reaches its best value at 1 and worst 
+       score at 0.
+
+       It creates a scores dictionary for the categories
+       and the corresponding evaluation measures (accuracy,
+       precision, recall, f1)
+       
+    Args:
+        - model: Takes the model
+        - X_test: Takes the predictor test data
+        - Y_test: Takes the response test data
+            
+    Returns:
+    	A data frame with the evaluations measures for each category
+
+        - Accuracy-Score
+        - Precision-Score
+        - Recall-Score
+        - F1-Score
+
+        Accuracy: is the fraction of predictions the model made
+        	a correct prediction.
+
         Precision: is the ratio tp / (tp + fp) where tp is the 
             number of true positives and fp the number of false 
             positives. The precision is intuitively the ability 
@@ -164,23 +175,28 @@ def evaluate_model(model, X_test, Y_test, category_names):
         F1-Score: can be interpreted as a weighted harmonic mean of 
             the precision and recall, where an F-beta score reaches 
             its best value at 1 and worst score at 0.
-        
-        Support: is the number of occurrences of each class in y_true.
-        
-        Average Score/Total: function computes the average precision 
-            (AP) from prediction scores. The value is between 0 and 1 
-            and higher is better. 
     
     '''
     
-    Y_pred = model.predict(X_test)
-    Y_preds = pd.DataFrame(Y_pred, columns=category_names)
-
-    for category in category_names:
-        y_true = Y_test[category]
-        y_pred = Y_preds[category]    
-        print(category)
-        print(classification_report(y_true, y_pred))
+    scores = {'category' : [],
+        'Accuracy' : [],
+        'Precision' : [],
+        'Recall' : [],
+        'F1-Score' : []}
+    
+    Y_pred = pd.DataFrame(model.predict(X_test), columns = category_names)
+    
+    for col in Y_test.columns:
+        scores['category'].append(col)
+        scores['Accuracy'].append(accuracy_score(Y_test[col], Y_pred[col]))
+        scores['Precision'].append(precision_score(Y_test[col], Y_pred[col]))
+        scores['Recall'].append(recall_score(Y_test[col], Y_pred[col]))
+        scores['F1-Score'].append(f1_score(Y_test[col], Y_pred[col]))
+        
+    scores = pd.DataFrame(scores).set_index('category')
+    
+    print(scores)
+    
 
 
 def save_model(model, model_filepath):
